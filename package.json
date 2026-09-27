@@ -1,0 +1,34 @@
+{
+  "name": "save-bgcol",
+  "version": "0.0.1",
+  "description": "A simple app for choosing and saving your preferred background colour for the page.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "fastify": "3.21.1",
+    "fastify-static": "4.2.3",
+    "handlebars": "4.7.7",
+    "point-of-view": "4.15.2",
+    "uuid": "8.3.2",
+    "nodemailer": "6.6.3",
+    "archiver": "5.3.1"
+  },
+  "engines": {
+    "node": "14.x"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/tomthecollins/save-bgcol.git"
+  },
+  "license": "AGPL-3.0-or-later",
+  "keywords": [
+    "node",
+    "glitch",
+    "fastify",
+    "auth",
+    "magic link",
+    "background colour"
+  ]
+}

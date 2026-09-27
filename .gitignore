@@ -1,0 +1,10 @@
+# Project secrets
+.env
+
+# Dependency directories
+node_modules/
+
+# OS files
+.DS_Store
+
+package-lock.json
