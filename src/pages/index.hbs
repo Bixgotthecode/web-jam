@@ -26,6 +26,7 @@
 
     <!-- Import the webpage's stylesheet -->
     <link rel="stylesheet" href="./style.css" />
+    <script src="/socket.io/socket.io.js"></script>
     <script src="./client.js" defer></script>
 
   </head>
@@ -34,40 +35,25 @@
       <div class="content" role="main">
 
         <!-- This is the start of content for our page -->
-        <h1 class="title">save-bgcol</h1>
+        <h1 class="title">collaborate</h1>
 
         <p>
-          Welcome to a minimal example of a progressive web app (PWA) that supports sign in via magic links, and choosing and saving your preferred background colour for the page. That's it!
+          Enter your collaborator's email address to send them a link into your shared game room.
         </p>
 
         <div class="email-colour-fun">
-          <form id="emailColourForm" class="email-colour-form" method="post">
-          <!-- <form id="emailColourForm" class="email-colour-form" method="post" onsubmit="return myClient.check_email()"> -->
-          <!-- <form id="emailColourForm" class="email-colour-form" method="post" onsubmit="return check_email()"> -->
+          <form id="invitationForm" class="email-colour-form" method="post">
             <div id="magicLinkArea">
-              <label for="emailAddr">
-                Get a magic link sent to your email address:
+              <label for="inviteeEmail">
+                Invitee email address:
               </label>
               <br>
-              <input id="emailAddr" name="emailAddr" required="required" type="text">
-              <button type="submit">Submit</button>
+              <input id="inviteeEmail" name="inviteeEmail" required="required" type="email" autocomplete="email">
+              <br>
+              <button id="sendInvitation" type="submit">Send invite link</button>
               <br><br>
+              <p id="invitationStatus" class="invitation-status" aria-live="polite"></p>
             </div>
-
-            <label id="bgcolSelLabel" for="bgcolSel">
-              Choose your background colour (after signing in):
-            </label>
-            <br>
-            <select id="bgcolSel" name="bgcolSel" disabled>
-              <option value="MistyRose">Misty rose</option>
-              <option value="PapayaWhip">Papaya whip</option>
-              <option value="PeachPuff">Peach puff</option>
-            </select>
-
-            <!-- <br><br>
-            <br><br>
-            <input id="testRemove" type="button" value="(test)"> -->
-            <br><br>
           </form>
 
         <div class="illo-container">

@@ -7,13 +7,16 @@
     "start": "node server.js"
   },
   "dependencies": {
+    "archiver": "5.3.1",
     "fastify": "3.21.1",
+    "fastify-socket.io": "2.0.1",
     "fastify-static": "4.2.3",
     "handlebars": "4.7.7",
-    "point-of-view": "4.15.2",
-    "uuid": "8.3.2",
+    "nexusui": "2.1.5",
     "nodemailer": "6.6.3",
-    "archiver": "5.3.1"
+    "point-of-view": "4.15.2",
+    "tone": "14.8.49",
+    "uuid": "8.3.2"
   },
   "engines": {
     "node": "14.x"

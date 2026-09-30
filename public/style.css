@@ -164,6 +164,10 @@ p {
 .email-colour-fun button {
   margin-top: 8px;
 }
+.invitation-status {
+  font-size: 1rem;
+  margin: 0.5rem 0;
+}
 .email-colour-fun button:hover {
   cursor: pointer;
   box-shadow: -8px 4px 20px #9BE7D8;
@@ -195,4 +199,52 @@ label {
 }
 h2 {
   color: #8C52FF;
+}
+
+/* Game room */
+.game-room {
+  min-height: 100vh;
+  margin: 0;
+  display: grid;
+  place-items: center;
+}
+.game-room-content {
+  width: min(680px, calc(100% - 2rem));
+}
+.game-room-content h1 {
+  margin-bottom: 0;
+}
+.tempo,
+.melody-label {
+  margin-bottom: 0.4rem;
+  font-weight: bold;
+}
+.piano-shell {
+  width: min(100%, 640px);
+  overflow-x: auto;
+  transition: opacity 160ms ease;
+}
+.piano-shell.is-waiting {
+  opacity: 0.45;
+  pointer-events: none;
+}
+.melody {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding: 0;
+  margin-top: 0;
+  list-style: none;
+}
+.melody li {
+  min-width: 2.4rem;
+  padding: 0.35rem 0.55rem;
+  border-radius: 0.3rem;
+  background: #FFFFFF;
+  border: 1px solid #000000;
+  text-align: center;
+}
+.game-error {
+  color: #a40000;
+  min-height: 1.5rem;
 }

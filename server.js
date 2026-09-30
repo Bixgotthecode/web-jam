@@ -31,6 +31,18 @@ fastify.register(require("fastify-static"), {
   prefix: "/" // optional: default '/'
 })
 
+// Serve the browser builds locally so the game room does not depend on a CDN.
+fastify.register(require("fastify-static"), {
+  root: path.join(__dirname, "node_modules", "nexusui", "dist"),
+  prefix: "/vendor/nexusui/",
+  decorateReply: false
+})
+fastify.register(require("fastify-static"), {
+  root: path.join(__dirname, "node_modules", "tone", "build"),
+  prefix: "/vendor/tone/",
+  decorateReply: false
+})
+
 // fastify-formbody lets us parse incoming forms
 // fastify.register(require("fastify-formbody"));
 
@@ -41,6 +53,10 @@ fastify.register(require("point-of-view"), {
   }
 })
 
+// Socket.IO lets a host and invitee join the same temporary invitation room.
+// This follows the room-based collaboration pattern used in web-jam.
+fastify.register(require("fastify-socket.io"))
+
 const publicUrl = "https://save-bgcol-production.up.railway.app"
 // Load and parse SEO data
 const seo = require("./src/seo.json");
@@ -49,6 +65,99 @@ seo.url = publicUrl
 let userSessions // Will read data into this variable.
 const sessionLength = 30*60*1000 // Max 30 min session
 const fnam = "./data/user_sessions.json"
+
+const invitations = {}
+const idToSocket = {}
+const playerSessions = {}
+const invitationLength = 24 * 60 * 60 * 1000 // Invitations last one day.
+
+function isValidEmail(email){
+  return typeof email === "string" && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)
+}
+
+function invitationBaseUrl(req){
+  // Use the deployed URL when configured, but make local development links work too.
+  if (process.env.PUBLIC_URL){
+    return process.env.PUBLIC_URL.replace(/\/$/, "")
+  }
+  if (req && req.headers && req.headers.host){
+    const protocol = req.headers["x-forwarded-proto"] || "http"
+    return protocol + "://" + req.headers.host
+  }
+  return publicUrl
+}
+
+function getPlayerIndex(invitation, playerToken){
+  return invitation.playerTokens.indexOf(playerToken)
+}
+
+function gameState(invitation){
+  return {
+    melody: invitation.melody,
+    turnIndex: invitation.turnIndex,
+    bpm: 120
+  }
+}
+
+function joinGameRoom(socket, payload){
+  const invitationId = payload && payload.invitationId
+  const playerToken = payload && payload.playerToken
+  const invitation = invitations[invitationId]
+  const playerIndex = invitation && getPlayerIndex(invitation, playerToken)
+
+  if (!invitation || playerIndex === -1 || Date.now() - invitation.createdAt > invitationLength){
+    socket.emit("invitation-error", "This game link is invalid or has expired.")
+    return null
+  }
+
+  socket.join(invitationId)
+  playerSessions[socket.id] = { invitationId: invitationId, playerIndex: playerIndex }
+  socket.emit("game-state", Object.assign({ playerIndex: playerIndex }, gameState(invitation)))
+  return { invitation: invitation, playerIndex: playerIndex }
+}
+
+fastify.ready(err => {
+  if (err) throw err
+
+  fastify.io.on("connection", socket => {
+    idToSocket[socket.id] = socket
+
+    socket.on("join-invitation", payload => {
+      const joined = joinGameRoom(socket, payload)
+      // The invitee (player 1) entering starts the shared game room transition.
+      if (joined && joined.playerIndex === 1){
+        fastify.io.to(payload.invitationId).emit("game-ready")
+      }
+    })
+
+    // A page refresh restores membership without re-triggering navigation.
+    socket.on("join-game-room", payload => {
+      joinGameRoom(socket, payload)
+    })
+
+    socket.on("add-note", midi => {
+      const player = playerSessions[socket.id]
+      const invitation = player && invitations[player.invitationId]
+      if (!invitation || !Number.isInteger(midi) || midi < 48 || midi > 72){
+        socket.emit("game-error", "That note is not available on this piano.")
+        return
+      }
+      if (player.playerIndex !== invitation.turnIndex){
+        socket.emit("game-error", "Please wait for your turn.")
+        return
+      }
+
+      invitation.melody.push(midi)
+      invitation.turnIndex = (invitation.turnIndex + 1) % invitation.playerTokens.length
+      fastify.io.to(player.invitationId).emit("game-state", gameState(invitation))
+    })
+
+    socket.on("disconnect", () => {
+      delete idToSocket[socket.id]
+      delete playerSessions[socket.id]
+    })
+  })
+})
 
 /**
 * Our home page route
@@ -60,6 +169,73 @@ fastify.get("/", function(req, rep){
   let params = { seo: seo }
   // The Handlebars code will be able to access the parameter values and build them into the page
   rep.view("/src/pages/index.hbs", params)
+})
+
+fastify.get("/game-room", function(req, rep){
+  rep.view("/src/pages/game-room.hbs")
+})
+
+//////////////////////
+// Email invitations //
+//////////////////////
+fastify.post("/api/invitations", async function(req, rep){
+  const body = req.body || {}
+  const inviteeEmail = typeof body.inviteeEmail === "string" ? body.inviteeEmail.trim() : ""
+  const hostSocket = idToSocket[body.socketId]
+
+  if (!isValidEmail(inviteeEmail)){
+    return rep.code(400).send({ msg: "Please enter a valid invitee email address." })
+  }
+  if (!hostSocket){
+    return rep.code(409).send({ msg: "Your live connection is not ready. Please try again." })
+  }
+
+  const invitationId = uuidv4()
+  const hostToken = uuidv4()
+  const inviteeToken = uuidv4()
+  const invitationUrl = invitationBaseUrl(req) + "?invite=" +
+    encodeURIComponent(invitationId) + "&player=" + encodeURIComponent(inviteeToken)
+  invitations[invitationId] = {
+    createdAt: Date.now(),
+    playerTokens: [hostToken, inviteeToken],
+    melody: [],
+    turnIndex: 0
+  }
+  hostSocket.join(invitationId)
+  playerSessions[hostSocket.id] = { invitationId: invitationId, playerIndex: 0 }
+
+  const message = [
+    "You have been invited to collaborate.",
+    "",
+    "Open this link to join the game room:",
+    invitationUrl,
+    "",
+    "This invitation expires in 24 hours."
+  ].join("\n")
+
+  try {
+    await transporter.sendMail({
+      from: '"Collaboration invite" <' + process.env.TEST_SENDER + ">",
+      to: inviteeEmail,
+      subject: "You're invited to collaborate",
+      text: message,
+      html: message.replace(/\n/g, "<br>")
+    })
+  }
+  catch (err){
+    delete invitations[invitationId]
+    return rep.code(502).send({
+      msg: "The invitation email could not be sent. Check the SMTP configuration and try again."
+    })
+  }
+
+  return rep.send({
+    msg: "Invitation email sent.",
+    invitationUrl: invitationUrl,
+    hostWaitingUrl: "/?invite=" + encodeURIComponent(invitationId) +
+      "&player=" + encodeURIComponent(hostToken),
+    invitationId: invitationId
+  })
 })
 
 

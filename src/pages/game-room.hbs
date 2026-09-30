@@ -1,0 +1,26 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Game room</title>
+    <link rel="stylesheet" href="/style.css">
+    <script src="/socket.io/socket.io.js"></script>
+    <script src="/vendor/nexusui/NexusUI.min.js"></script>
+    <script src="/vendor/tone/Tone.js"></script>
+    <script src="/game-room.js" defer></script>
+  </head>
+  <body class="game-room">
+    <main class="game-room-content">
+      <h1>game room</h1>
+      <p id="turnStatus" aria-live="polite">Connecting to game…</p>
+      <p class="tempo">Quarter note = 120</p>
+      <div id="pianoShell" class="piano-shell is-waiting">
+        <div id="piano"></div>
+      </div>
+      <p class="melody-label">Looping melody</p>
+      <ol id="melody" class="melody" aria-live="polite"></ol>
+      <p id="gameError" class="game-error" aria-live="polite"></p>
+    </main>
+  </body>
+</html>
